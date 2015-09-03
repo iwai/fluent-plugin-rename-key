@@ -4,6 +4,7 @@ class Fluent::RenameKeyOutput < Fluent::Output
   config_param :remove_tag_prefix, :string, default: nil
   config_param :append_tag, :string, default: 'key_renamed'
   config_param :deep_rename, :bool, default: true
+  config_param :add_prefix, :string, default: nil
 
   def configure conf
     super
@@ -28,12 +29,19 @@ class Fluent::RenameKeyOutput < Fluent::Output
     raise Fluent::ConfigError, "No rename rules are given" if @rename_rules.empty?
 
     @remove_tag_prefix = /^#{Regexp.escape @remove_tag_prefix}\.?/ if @remove_tag_prefix
+
+      if @add_prefix
+        @added_prefix_string = @add_prefix + '.'
+      end
   end
 
   def emit tag, es, chain
     es.each do |time, record|
       new_tag = @remove_tag_prefix ? tag.sub(@remove_tag_prefix, '') : tag
       new_tag = "#{new_tag}.#{@append_tag}".sub(/^\./, '')
+      if @add_prefix
+        new_tag = @added_prefix_string + new_tag
+      end
       new_record = rename_key record
       Fluent::Engine.emit new_tag, time, new_record
     end
